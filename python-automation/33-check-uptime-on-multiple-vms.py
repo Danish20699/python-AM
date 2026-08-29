@@ -16,12 +16,12 @@ def check_vm_uptime(ip, username, password):
         )
         stdin, stdout, stderr = client.exec_command('uptime')
         output = stdout.read().decode('utf-8').strip()
-        print(f"[{ip:<15}] ?? {output}")
+        print(f"[{ip:<15}] [UP] {output}")
 
     except paramiko.AuthenticationException:
-        print(f"[{ip:<15}] ?? Authentication Failed")
+        print(f"[{ip:<15}] [FAIL] Authentication Failed")
     except Exception as e:
-        print(f"[{ip:<15}] ?? Unreachable ({e})")
+        print(f"[{ip:<15}] [FAIL] Unreachable ({e})")
     finally:
         client.close()
 
@@ -36,7 +36,7 @@ def main():
     password = os.getenv("SSH_PASSWORD", "danishh")
 
     print(f"\n{'='*60}")
-    print(f"  ?? Checking Uptime on {len(vm_ips)} Virtual Machine(s)")
+    print(f"  Checking Uptime on {len(vm_ips)} Virtual Machine(s)")
     print(f"{'='*60}\n")
 
     for ip in vm_ips:

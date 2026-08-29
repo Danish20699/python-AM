@@ -21,15 +21,15 @@ def check_single_vm_uptime(hostname, username, password):
         error = stderr.read().decode('utf-8').strip()
 
         if output:
-            print(f"\n[SUCCESS] ?? [{hostname}] Uptime Info:")
+            print(f"\n[SUCCESS] [{hostname}] Uptime Info:")
             print(f"--> {output}\n")
         if error:
-            print(f"\n[ERROR] ?? [{hostname}]: {error}\n", file=sys.stderr)
+            print(f"\n[ERROR] [{hostname}]: {error}\n", file=sys.stderr)
 
     except paramiko.AuthenticationException:
-        print(f"\n[FAILED] ?? Authentication error for user '{username}'. Check password.", file=sys.stderr)
+        print(f"\n[FAILED] Authentication error for user '{username}'. Check password.", file=sys.stderr)
     except Exception as e:
-        print(f"\n[FAILED] ?? Could not connect to {hostname}: {e}", file=sys.stderr)
+        print(f"\n[FAILED] Could not connect to {hostname}: {e}", file=sys.stderr)
     finally:
         client.close()
 
