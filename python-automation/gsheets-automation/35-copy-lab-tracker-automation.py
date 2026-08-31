@@ -23,34 +23,55 @@ print("Successfully connected to LabTracker!\n")
 
 
 # 3. Helper Function: Check if a file exists on GitHub
-def check_github_file(username, repo, filename):
-    # Extract lab number prefix (e.g. "34" from "34-gsheet-playground-script.py")
-    lab_num = filename.split('-')[0].strip() if '-' in filename else ""
+def check_github_file(username, repo, filename, lab_number=""):
+    clean_num = str(lab_number).strip().lstrip('0')
+    suffix = filename.split('-', 1)[-1] if '-' in filename else filename
     
-    # Possible filenames to try
-    possible_names = [filename]
-    if lab_num == "34":
-        possible_names.extend(["34-gsheet-playground.py", "34-gsheet-playground-script.py", "gsheet-playground.py"])
-    elif lab_num == "35":
-        possible_names.extend(["35-copy-lab-tracker-automation.py", "lab-checker.py"])
+    urls_to_try = []
 
-    # Possible subfolders to try
-    folders = [
-        "",
-        "python-automation/",
-        "python-automation/gsheets-automation/",
-        "gsheets-automation/"
-    ]
+    # 1. Python Basics Repo (Tasks 26-29, 36-40)
+    if "python-basics" in repo.lower():
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-basics/main/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-basics/main/{clean_num}-{suffix}")
 
-    for fname in possible_names:
-        for folder in folders:
-            url = f"https://raw.githubusercontent.com/{username}/{repo}/main/{folder}{fname}"
-            try:
-                response = requests.get(url, timeout=3)
-                if response.status_code == 200:
-                    return True
-            except Exception:
-                pass
+    # 2. Python Automation Repo (Tasks 30-35)
+    elif "automation" in repo.lower() or repo in ["python-automation", "python-AM"]:
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-AM/main/python-automation/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-AM/main/python-automation/gsheets-automation/{filename}")
+        if clean_num == "34":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-AM/main/python-automation/gsheets-automation/34-gsheet-playground.py")
+        elif clean_num == "35":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-AM/main/python-automation/gsheets-automation/35-copy-lab-tracker-automation.py")
+
+    # 3. Linux Repo (Tasks 8-16)
+    elif repo == "linux":
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/lab-{clean_num.zfill(2)}-{suffix}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/{filename}")
+
+    # 4. PostgreSQL Repo (Tasks 18-21)
+    elif repo == "psql":
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/postgresql-labs/main/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/postgresql-labs/main/{clean_num.zfill(2)}-{suffix}/README.md")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/postgresql-labs/main/{clean_num}-{suffix}/README.md")
+
+    # 5. PHP Repo (Task 22)
+    elif repo == "php":
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/php-labs/main/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/php-labs/main/{suffix.replace('.md', '')}/README.md")
+
+    # 6. Any other repo
+    else:
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/{repo}/main/{filename}")
+
+    # Test URLs
+    for url in urls_to_try:
+        try:
+            res = requests.get(url, timeout=0.8)
+            if res.status_code == 200:
+                return True
+        except Exception:
+            pass
     return False
 
 # 4. Find Danish's Column Dynamically
@@ -67,17 +88,19 @@ github_url = sheet.cell(1, danish_col).value
 github_username = github_url.split('/')[-1] if github_url else "Danish20699"
 print(f"Target GitHub User: {github_username}\n")
 
-# 5. Fetch all Lab Filenames (Column B) and Repo Names (Column C)
+# 5. Fetch all Lab Numbers (Column A), Filenames (Column B) and Repo Names (Column C)
 print("Scanning lab files from spreadsheet...")
-filenames = sheet.col_values(2)[5:]  # Column B starting from row 6
-repos = sheet.col_values(3)[5:]      # Column C starting from row 6
+lab_numbers = sheet.col_values(1)[5:]  # Column A starting from row 6
+filenames = sheet.col_values(2)[5:]    # Column B starting from row 6
+repos = sheet.col_values(3)[5:]        # Column C starting from row 6
 
 print(f"Total labs to check: {len(filenames)}\n")
 print("=" * 60)
 print(f"  [CHECKING] Starting Dynamic GitHub Lab Checker for {student_name}")
 print("=" * 60 + "\n")
 
-# 6. Dynamic Loop: Check GitHub & Update Google Sheet
+# 6. Dynamic Loop: Check GitHub & Prepare Bulk Updates
+text_updates = []
 color_updates = []
 
 green_format = {
@@ -89,7 +112,7 @@ red_format = {
     "textFormat": {"foregroundColor": {"red": 0.7, "green": 0.0, "blue": 0.0}}
 }
 
-for idx, (filename, repo) in enumerate(zip(filenames, repos), start=6):
+for idx, (lab_num, filename, repo) in enumerate(zip(lab_numbers, filenames, repos), start=6):
     if not filename or not filename.strip():
         continue
 
@@ -97,28 +120,29 @@ for idx, (filename, repo) in enumerate(zip(filenames, repos), start=6):
     repo_name = "python-AM" if repo == "python-automation" else repo
 
     # Check GitHub
-    is_uploaded = check_github_file(github_username, repo_name, filename.strip())
+    is_uploaded = check_github_file(github_username, repo_name, filename.strip(), lab_number=lab_num)
     status = "Yes" if is_uploaded else "No"
     cell_format = green_format if is_uploaded else red_format
 
-    # Read current cell value so we only update if changed
-    current_value = sheet.cell(idx, danish_col).value
-    
-    if current_value != status:
-        sheet.update_cell(idx, danish_col, status)
-        print(f"Row {idx:<2} | {filename:<40} -> [UPDATED: {status}]")
-    else:
-        print(f"Row {idx:<2} | {filename:<40} -> [{status}]")
+    print(f"Row {idx:<2} | {filename:<45} -> [{status}]")
 
-    # Add color formatting for this cell (e.g. "G35")
+    # 1. Add Text Update to bulk list
+    text_updates.append(gspread.Cell(idx, danish_col, status))
+
+    # 2. Add Color Update to bulk list
     color_updates.append({
         "range": f"G{idx}",
         "format": cell_format
     })
 
+# Apply all text updates in a single batch request
+if text_updates:
+    print("\nPushing all Text updates to Google Sheets in bulk...")
+    sheet.update_cells(text_updates)
+
 # Apply all background colors in a single batch request
 if color_updates:
-    print("\nApplying Green and Red colors to Google Sheet...")
+    print("Applying Green and Red colors to Google Sheets in bulk...")
     sheet.batch_format(color_updates)
 
 print("\n" + "=" * 60)
