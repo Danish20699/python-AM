@@ -39,108 +39,122 @@ sheet = client.open('LabTracker').sheet1
 print("Connected successfully to LabTracker!")
 
 # ==========================================
-# 2. GITHUB CHECKER FUNCTION
+# 2. GITHUB CHECKER FUNCTION (RATE-LIMIT FREE)
 # ==========================================
-def check_github(github_url, repo_name, lab_number):
-    """Takes a student's URL, finds their username, and checks their GitHub repo."""
-    
-    # Safety Check: If the spreadsheet has a blank cell or "NaN" for the URL, skip it.
+def check_github(github_url, repo_name, filename, lab_number=""):
+    """Checks if a student uploaded a specific lab file on GitHub."""
     if not github_url or github_url.lower() == "nan":
         return False
         
-    # Extract username from URL (e.g. https://github.com/Danish20699 -> Danish20699)
     username = github_url.rstrip('/').split('/')[-1]
-    
-    # Prepare to show GitHub token if available
-    headers = {}
-    if GITHUB_TOKEN:
-        headers['Authorization'] = f'token {GITHUB_TOKEN}'
-        
-    # Try both original repo name and repo variants (like python-AM)
-    possible_repos = [repo_name]
-    if "python" in repo_name.lower():
-        possible_repos.extend(["python-AM", "python-automation"])
+    clean_num = str(lab_number).strip().lstrip('0')
+    suffix = filename.split('-', 1)[-1] if '-' in filename else filename
 
-    # Try both root directory and subfolders
-    subpaths = ["", "python-automation/", "gsheets-automation/"]
+    # Repo name mapping
+    repos_to_try = [repo_name]
+    if "python-automation" in repo_name.lower():
+        repos_to_try.extend(["python-AM", "python-automation"])
+    elif "psql" in repo_name.lower():
+        repos_to_try.extend(["postgresql-labs", "psql"])
+    elif "php" in repo_name.lower():
+        repos_to_try.extend(["php-labs", "php"])
+    elif "python-basics" in repo_name.lower():
+        repos_to_try.extend(["python-basics"])
 
-    for repo in set(possible_repos):
-        for sub in subpaths:
-            api_link = f"https://api.github.com/repos/{username}/{repo}/contents/{sub}"
-            try:
-                response = requests.get(api_link, headers=headers, timeout=5)
-                if response.status_code == 200:
-                    for file in response.json():
-                        if isinstance(file, dict) and 'name' in file:
-                            # Matches lab number at start (e.g. "30-ping-check.py" matches "30")
-                            if file['name'].startswith(str(lab_number)):
-                                return True
-            except Exception:
-                pass
-            
+    # Folder paths to check
+    folders = [
+        "",
+        "python-automation/",
+        "python-automation/gsheets-automation/",
+        "gsheets-automation/",
+        "labs/linux-fundamentals/",
+        "labs/"
+    ]
+
+    # Filename aliases
+    filenames_to_try = [filename]
+    if clean_num:
+        filenames_to_try.extend([
+            f"{clean_num}-{suffix}",
+            f"lab-{clean_num.zfill(2)}-{suffix}",
+            f"lab-{clean_num}-{suffix}"
+        ])
+    if clean_num == "34":
+        filenames_to_try.append("34-gsheet-playground.py")
+    elif clean_num == "35":
+        filenames_to_try.append("35-copy-lab-tracker-automation.py")
+
+    for r in set(repos_to_try):
+        for fld in folders:
+            for fname in set(filenames_to_try):
+                url = f"https://raw.githubusercontent.com/{username}/{r}/main/{fld}{fname}"
+                try:
+                    res = requests.get(url, timeout=0.8)
+                    if res.status_code == 200:
+                        return True
+                except Exception:
+                    pass
     return False
 
-# ==========================================
-# 3. READ DATA & PREPARE BULK UPDATES
-# ==========================================
-print("\nDownloading sheet data... (Counts as 1 API Request to Google)")
-all_data = sheet.get_all_values()
+# 4. Find Danish's Column Dynamically
+student_name = "Danish"
+row_4_students = sheet.row_values(4)
+if student_name in row_4_students:
+    danish_col = row_4_students.index(student_name) + 1  # Column G = 7
+    print(f"Found '{student_name}' at Column index: {danish_col} (Column G)")
+else:
+    danish_col = 7  # Fallback to Column G
 
-# Grab the list of student GitHub URLs from Row 1, Column D onwards
-student_urls = all_data[0][3:]
+# Get Danish's GitHub Username from Row 1
+github_url = sheet.cell(1, danish_col).value
+github_username = github_url.rstrip('/').split('/')[-1] if github_url else "Danish20699"
+print(f"Target GitHub User: {github_username}\n")
 
+# 5. Fetch all Lab Data
+print("Scanning lab files from spreadsheet...")
+lab_numbers = sheet.col_values(1)[5:]  # Column A starting from row 6
+filenames = sheet.col_values(2)[5:]    # Column B starting from row 6
+repos = sheet.col_values(3)[5:]        # Column C starting from row 6
+
+print(f"Total labs to check: {len(filenames)}\n")
+print("=" * 60)
+print(f"  [CHECKING] Starting Dynamic GitHub Lab Checker for {student_name}")
+print("=" * 60 + "\n")
+
+# 6. Dynamic Loop: Check GitHub & Prepare Bulk Updates
 text_updates = []
 color_updates = []
 
-print(f"Checking GitHub for all students and labs across {len(all_data) - 5} rows...")
-
-# Loop through the rows starting at Row 6 in the spreadsheet
-for row_index in range(5, len(all_data)):
-    row = all_data[row_index]
-    
-    lab_number = row[0].strip()  # Column A
-    repo_name = row[2].strip()   # Column C
-    
-    if not lab_number or not repo_name:
+for idx, (lab_num, filename, repo) in enumerate(zip(lab_numbers, filenames, repos), start=6):
+    if not filename or not filename.strip() or not lab_num.strip():
         continue
-    
-    print(f"Checking Lab {lab_number:<2} ({repo_name})...")
-        
-    # Loop through every student column
-    for col_offset in range(len(student_urls)):
-        url = student_urls[col_offset]
-        
-        excel_row = row_index + 1      # Spreadsheets start at row 1
-        excel_col = col_offset + 4     # Students start at Column D (Col 4)
-        
-        did_homework = check_github(url, repo_name, lab_number)
-        
-        if did_homework:
-            cell_text = "Yes"
-            cell_color = green_format
-        else:
-            cell_text = "No"
-            cell_color = red_format
-            
-        # 1. Add Text Update to cart
-        text_updates.append(gspread.Cell(excel_row, excel_col, cell_text))
-        
-        # 2. Add Color Update to cart
-        cell_name = rowcol_to_a1(excel_row, excel_col)
-        color_updates.append({
-            "range": cell_name,
-            "format": cell_color
-        })
 
-# ==========================================
-# 4. PUSH ALL UPDATES AT ONCE (BULK BATCH)
-# ==========================================
-print("\nPushing all updates to Google Sheets in bulk...")
+    is_uploaded = check_github(github_url, repo, filename.strip(), lab_number=lab_num)
+    status = "Yes" if is_uploaded else "No"
+    cell_format = green_format if is_uploaded else red_format
 
+    print(f"Row {idx:<2} | Lab {lab_num:<2} | {filename:<45} -> [{status}]")
+
+    # 1. Add Text Update to bulk list
+    text_updates.append(gspread.Cell(idx, danish_col, status))
+
+    # 2. Add Color Update to bulk list
+    cell_name = rowcol_to_a1(idx, danish_col)
+    color_updates.append({
+        "range": cell_name,
+        "format": cell_format
+    })
+
+# Apply all text updates in a single batch request
 if text_updates:
+    print("\nPushing all Text updates to Google Sheets in bulk...")
     sheet.update_cells(text_updates)
 
+# Apply all background colors in a single batch request
 if color_updates:
+    print("Applying Green and Red colors to Google Sheets in bulk...")
     sheet.batch_format(color_updates)
 
-print("[SUCCESS] Bulk update and coloring complete! 🎉")
+print("\n" + "=" * 60)
+print("[DONE] Dynamic Lab Checking & Google Sheet Update Complete!")
+print("=" * 60 + "\n")
