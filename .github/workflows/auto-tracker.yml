@@ -1,0 +1,33 @@
+name: Auto Lab Tracker Update
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allows you to trigger it manually from GitHub with a click!
+  schedule:
+    - cron: '*/30 * * * *' # Automatically checks every 30 minutes even if you don't push!
+
+jobs:
+  update-sheet:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          pip install gspread google-auth requests
+
+      - name: Write Google Cloud Credentials
+        run: |
+          mkdir -p python-automation/gsheets-automation
+          echo '${{ secrets.GCP_SA_KEY }}' > python-automation/gsheets-automation/credentials.json
+
+      - name: Run Dynamic Lab Tracker
+        run: |
+          python python-automation/gsheets-automation/35-copy-lab-tracker-automation.py

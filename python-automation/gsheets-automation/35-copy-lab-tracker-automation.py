@@ -39,7 +39,7 @@ sheet = client.open('LabTracker').sheet1
 print("Connected successfully to LabTracker!")
 
 # ==========================================
-# 2. GITHUB CHECKER FUNCTION (RATE-LIMIT FREE)
+# 2. GITHUB CHECKER FUNCTION (FAST & RELIABLE)
 # ==========================================
 def check_github(github_url, repo_name, filename, lab_number=""):
     """Checks if a student uploaded a specific lab file on GitHub."""
@@ -50,50 +50,49 @@ def check_github(github_url, repo_name, filename, lab_number=""):
     clean_num = str(lab_number).strip().lstrip('0')
     suffix = filename.split('-', 1)[-1] if '-' in filename else filename
 
-    # Repo name mapping
-    repos_to_try = [repo_name]
-    if "python-automation" in repo_name.lower():
-        repos_to_try.extend(["python-AM", "python-automation"])
+    urls_to_try = []
+
+    # 1. Python Basics Repo (Tasks 26-29, 36-40)
+    if "basics" in repo_name.lower():
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-basics/main/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-basics/main/{clean_num}-{suffix}")
+
+    # 2. Python Automation Repo (Tasks 30-35)
+    elif "automation" in repo_name.lower() or repo_name in ["python-AM", "python-automation"]:
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-AM/main/python-automation/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-AM/main/python-automation/gsheets-automation/{filename}")
+        if clean_num == "34":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-AM/main/python-automation/gsheets-automation/34-gsheet-playground.py")
+        elif clean_num == "35":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-AM/main/python-automation/gsheets-automation/35-copy-lab-tracker-automation.py")
+
+    # 3. Linux Repo
+    elif "linux" in repo_name.lower():
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/lab-{clean_num.zfill(2)}-{suffix}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/{filename}")
+
+    # 4. PostgreSQL Repo
     elif "psql" in repo_name.lower():
-        repos_to_try.extend(["postgresql-labs", "psql"])
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/postgresql-labs/main/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/postgresql-labs/main/{clean_num.zfill(2)}-{suffix}/README.md")
+
+    # 5. PHP Repo
     elif "php" in repo_name.lower():
-        repos_to_try.extend(["php-labs", "php"])
-    elif "python-basics" in repo_name.lower():
-        repos_to_try.extend(["python-basics"])
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/php-labs/main/{filename}")
 
-    # Folder paths to check
-    folders = [
-        "",
-        "python-automation/",
-        "python-automation/gsheets-automation/",
-        "gsheets-automation/",
-        "labs/linux-fundamentals/",
-        "labs/"
-    ]
+    # 6. Fallback
+    else:
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/{repo_name}/main/{filename}")
 
-    # Filename aliases
-    filenames_to_try = [filename]
-    if clean_num:
-        filenames_to_try.extend([
-            f"{clean_num}-{suffix}",
-            f"lab-{clean_num.zfill(2)}-{suffix}",
-            f"lab-{clean_num}-{suffix}"
-        ])
-    if clean_num == "34":
-        filenames_to_try.append("34-gsheet-playground.py")
-    elif clean_num == "35":
-        filenames_to_try.append("35-copy-lab-tracker-automation.py")
-
-    for r in set(repos_to_try):
-        for fld in folders:
-            for fname in set(filenames_to_try):
-                url = f"https://raw.githubusercontent.com/{username}/{r}/main/{fld}{fname}"
-                try:
-                    res = requests.get(url, timeout=0.8)
-                    if res.status_code == 200:
-                        return True
-                except Exception:
-                    pass
+    # Check direct URLs
+    for url in urls_to_try:
+        try:
+            res = requests.get(url, timeout=3.0)
+            if res.status_code == 200:
+                return True
+        except Exception:
+            pass
     return False
 
 # 4. Find Danish's Column Dynamically
