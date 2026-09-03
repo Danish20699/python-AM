@@ -1,11 +1,9 @@
 name: Auto Lab Tracker Update
 
 on:
+  workflow_dispatch: # Button in GitHub Actions to run manually with 1 click!
   push:
-    branches: [ main ]
-  workflow_dispatch: # Allows you to trigger it manually from GitHub with a click!
-  schedule:
-    - cron: '*/30 * * * *' # Automatically checks every 30 minutes even if you don't push!
+    branches: [ main ] # Only runs if you push changes to this python-AM repo
 
 jobs:
   update-sheet:
@@ -24,9 +22,11 @@ jobs:
           pip install gspread google-auth requests
 
       - name: Write Google Cloud Credentials
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
           mkdir -p python-automation/gsheets-automation
-          echo '${{ secrets.GCP_SA_KEY }}' > python-automation/gsheets-automation/credentials.json
+          echo "$GCP_SA_KEY" > python-automation/gsheets-automation/credentials.json
 
       - name: Run Dynamic Lab Tracker
         run: |
