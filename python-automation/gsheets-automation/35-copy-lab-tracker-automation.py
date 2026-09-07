@@ -52,36 +52,87 @@ def check_github(github_url, repo_name, filename, lab_number=""):
 
     urls_to_try = []
 
-    # 1. Python Basics Repo (Tasks 26-29, 36-40)
+    # 1. Direct check in repo at root
+    urls_to_try.append(f"https://raw.githubusercontent.com/{username}/{repo_name}/main/{filename}")
+
+    # 2. Python Basics Repo (Tasks 26-29, 36-40)
     if "basics" in repo_name.lower():
         urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-basics/main/{filename}")
         urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-basics/main/{clean_num}-{suffix}")
 
-    # 2. Python Automation Repo (Tasks 30-35)
+    # 3. Python Automation Repo (Tasks 30-35)
     elif "automation" in repo_name.lower() or repo_name in ["python-AM", "python-automation"]:
         urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-AM/main/python-automation/{filename}")
         urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-AM/main/python-automation/gsheets-automation/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-automation/main/python-automation/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-automation/main/python-automation/gsheets-automation/{filename}")
         if clean_num == "34":
             urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-AM/main/python-automation/gsheets-automation/34-gsheet-playground.py")
         elif clean_num == "35":
             urls_to_try.append(f"https://raw.githubusercontent.com/{username}/python-AM/main/python-automation/gsheets-automation/35-copy-lab-tracker-automation.py")
 
-    # 3. Linux Repo
+    # 4. Linux Repo (Labs 8-16, 24)
     elif "linux" in repo_name.lower():
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/{filename}")
         urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/lab-{clean_num.zfill(2)}-{suffix}")
         urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/{filename}")
-        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/{filename}")
+        if clean_num == "8":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/lab-08-update-upgrade.md")
+        elif clean_num == "9":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/lab-09-user-management.md")
+        elif clean_num == "10":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/lab-10-file-management.md")
+        elif clean_num == "11":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/lab-11-vi-editor.md")
+        elif clean_num == "12":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/lab-12-nano-editor.md")
+        elif clean_num == "13":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/lab-13-environment-variables.md")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux-system-labs/main/{clean_num}-{suffix}/{suffix}")
 
-    # 4. PostgreSQL Repo
-    elif "psql" in repo_name.lower():
+    # 5. Static Apache Portfolio (Lab 17)
+    elif "apache" in repo_name.lower() or "static" in repo_name.lower():
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/static-apache-portfolio/main/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/labs/linux-fundamentals/lab-17-apache-setup.md")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux-system-labs/main/17-setup-static-apache-html-website/17-setup-static-apache-html-website.md")
+
+    # 6. PostgreSQL Repo (Labs 18-21)
+    elif "psql" in repo_name.lower() or "postgres" in repo_name.lower():
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/psql/main/{filename}")
         urls_to_try.append(f"https://raw.githubusercontent.com/{username}/postgresql-labs/main/{filename}")
+        if clean_num == "18":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/postgresql-labs/main/01-setup-psql-and-create-db-for-college-with-student-table/01-setup-psql-and-create-db-for-college-with-student-table.md")
+        elif clean_num == "19":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/postgresql-labs/main/02-ddl-dml-dql-commands/02-ddl-dml-dql-commands.md")
+        elif clean_num == "20":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/postgresql-labs/main/03-user-management-creating-a-new-user-as-database-owner/03-user-management-creating-a-new-user-as-database-owner.md")
+        elif clean_num == "21":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/postgresql-labs/main/21-create-initsql-file-for-college-database/21-create-initsql-file-for-college-database.md")
         urls_to_try.append(f"https://raw.githubusercontent.com/{username}/postgresql-labs/main/{clean_num.zfill(2)}-{suffix}/README.md")
 
-    # 5. PHP Repo
+    # 7. PHP Repo (Lab 22)
     elif "php" in repo_name.lower():
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/php/main/{filename}")
         urls_to_try.append(f"https://raw.githubusercontent.com/{username}/php-labs/main/{filename}")
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/php-labs/main/php-script-to-display-courses-from-db/php-script-to-display-courses-from-db.md")
 
-    # 6. Fallback
+    # 8. Portfolio & Shell Automation (Labs 23, 24, 25)
+    elif any(k in repo_name.lower() for k in ["portfolio", "shell"]):
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/{repo_name}/main/{filename}")
+        if clean_num == "23":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/php-labs/main/shell-script-automation-to-deploy-portfolio-website-with-db-on-any-vm/shell-script-automation-to-deploy-portfolio-website-with-db-on-any-vm.md")
+        elif clean_num == "24":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/myscript.sh")
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/linux/main/fruits.sh")
+        elif clean_num == "25":
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/php-labs/main/shell-script-automation-to-deploy-portfolio-website-with-db-on-any-vm/deploy.sh")
+            urls_to_try.append(f"https://raw.githubusercontent.com/{username}/portfolio-shell-automation/main/setup_portfolio.sh")
+
+    # 9. Ansible Repo (Labs 41, 42)
+    elif "ansible" in repo_name.lower():
+        urls_to_try.append(f"https://raw.githubusercontent.com/{username}/ansible/main/{filename}")
+
+    # Fallback
     else:
         urls_to_try.append(f"https://raw.githubusercontent.com/{username}/{repo_name}/main/{filename}")
 
